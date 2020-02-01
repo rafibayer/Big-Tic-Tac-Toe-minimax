@@ -5,7 +5,7 @@ import time
 X = 1
 O = 2
 
-DEPTH_BUFFER = 0.25 # buffer in seconds to take off per depth level
+DEPTH_BUFFER = 0.3 # buffer in seconds to take off per depth level
 
 
 class TTTAgent:
@@ -19,9 +19,16 @@ class TTTAgent:
         self.explored = 0
         self.cutoffs = 0
 
+        self.seen_states = dict() # memo of states already evaluated
+
     # static evaluation function for a state
     def evaluate(self, state):
 
+        # check the memo for this state
+        if state in self.seen_states:
+            return self.seen_states[state]
+
+        # otherwise calculate static evaluation heuristic
         score = 0
         lines = []
 
@@ -51,25 +58,42 @@ class TTTAgent:
             X_count = line.count(X)
             O_count = line.count(O)
 
+
+
             # X's
             if O_count == 0:
                 if X_count == board_size: # X win
                     score += 100
-                elif X_count == board_size-1: # 2X no O
-                    score += 10
-                elif X_count == board_size-2:
-                    score += 1 
+                    return score
+
+                for i in range(board_size-1, 0, -1):
+                    if X_count == i:
+                        score += 10 * (i)
+
+                # elif X_count == board_size-1: # 2X no O
+                #     score += 10
+                # elif X_count == board_size-2:
+                #     score += 1 
 
             # O's
             if X_count == 0:
 
                 if O_count == board_size: # o Win
                     score -= 100
-                elif O_count == board_size-1: # 2O no X
-                    score -= 10
-                elif O_count == board_size-2:
-                    score -= 1
+                    return score
 
+                for i in range(board_size-1, 0, -1):
+                    if O_count == i:
+                        score -= 10 * (i)
+
+
+                # elif O_count == board_size-1: # 2O no X
+                #     score -= 10
+                # elif O_count == board_size-2:
+                #     score -= 1
+
+        # add this state to the memo
+        self.seen_states[state] = score
         return score
 
     # returns all potential moves for a given state
@@ -123,7 +147,7 @@ class TTTAgent:
             values = [] # current iteration values
             done = False # exist early
 
-            buffer = (cur_depth-1)**3 * DEPTH_BUFFER
+            buffer = (cur_depth-1)**2 * DEPTH_BUFFER
             while time.time() + buffer < start_time + self.time_limit and not done:
                 values = [self.minimax(s, cur_depth) for s in potential_states]
                 
@@ -147,7 +171,11 @@ class TTTAgent:
         if plyLeft == 0 or state.win(): # terminal
             return self.evaluate(state)
 
+        # check the memo for this substate
         neighbors = self.getNeighbors(state)
+        for n in neighbors:
+            if n in self.seen_states:
+                return self.seen_states[n]
 
 
         # maximizing player

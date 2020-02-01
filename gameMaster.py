@@ -5,8 +5,11 @@ from TTTAgent import * # AI player
 
 import time
 
-player1 = TTTAgent(9)
-player2 = TTTAgent(2)
+
+STATS = True
+
+player1 = TTTAgent(time_limit = 3) 
+player2 = TTTAgent(time_limit = 3)
 
 X = 1
 O = 2
@@ -14,17 +17,18 @@ O = 2
 # start a new game with player1 and player2
 def run(player1, player2):
     print("Welcome to Tic-Tac-Toe!")
-    game_size = int(input("Game size: "))
+    game_size = int(input("Game size: ")) # get the game board size
+    print(f"Creating a {game_size}x{game_size} board...")
 
-    game = TTTState(None, game_size)
+    game = TTTState(None, game_size) # make new game-state of size 
 
-    X_turn = True
+    X_turn = True # X's go first
 
-    while not game.win():
+    while not game.win(): 
         print(game)
 
-        mover = player1 if X_turn else player2
-        mover_token = X if X_turn else O
+        mover = player1 if X_turn else player2 # pick the moving agent
+        mover_token = X if X_turn else O # pick the movers token number
 
 
         if mover == player1:
@@ -35,15 +39,17 @@ def run(player1, player2):
 
 
         start_time = time.time()
-
         move = mover.move(game)
-        if isinstance(mover, TTTAgent):
-            print(f"{getToken(mover_token)}'s states explored: {mover.explored}")
-            print(f"{getToken(mover_token)}'s Alpha-Beta cutoffs: {mover.cutoffs}")
 
-        end_time = time.time()
+        if STATS:
 
-        print(f"Elapsed time: {round(end_time-start_time, 1)}s")
+            if isinstance(mover, TTTAgent):
+                print(f"{getToken(mover_token)}'s states explored: {mover.explored}")
+                print(f"{getToken(mover_token)}'s Alpha-Beta cutoffs: {mover.cutoffs}")
+
+                end_time = time.time()
+
+                print(f"Elapsed time: {round(end_time-start_time, 2)}s")
 
 
         if not validMove(move, game):
@@ -63,7 +69,7 @@ def run(player1, player2):
 
     again = input("Player again? (y/n): ")
     if again == "y":
-        run(player1, player1) # swap order to swap who goes first?
+        run(player1, player2) 
 
 def getToken(num):
     return "X" if num == X else "O"

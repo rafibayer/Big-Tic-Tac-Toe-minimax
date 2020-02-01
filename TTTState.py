@@ -32,6 +32,12 @@ class TTTState:
 
         return res
 
+    def __eq__(self, s2):
+        return self.board == s2.board and self.whose_turn == s2.whose_turn
+
+    def __hash__(self):
+        return hash(str(self) + str(self.whose_turn))
+
     def win(self):
         board_size = len(self.board)
 
