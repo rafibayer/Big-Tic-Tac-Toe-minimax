@@ -1,4 +1,5 @@
 
+import numpy as np
 from TTTState import *
 import time
 
@@ -6,18 +7,19 @@ X = 1
 O = 2
 
 DEPTH_BUFFER = 0.1 # buffer in seconds to take off per depth level
-MIN_BUFFER_POWER = 9 # after gamesize 9 we start increasing the effetive buffer quickly
+MIN_BUFFER_POWER = 25 # after gamesize 9 we start increasing the effetive buffer quickly
 
 
 class TTTAgent:
 
-    def __init__(self, time_limit=0, maxply=4):
+    def __init__(self, time_limit=0, maxply=4, use_memo=False):
         if time_limit != 0 and maxply != 4:
             print("Warning, if time limit is not 0, maxply will be ignored")
         self.time_limit = time_limit # time limit in seconds (0 indicates no limit)
         self.maxply = maxply # max depth to search
         self.states_explored = 0 # number of states explored
         self.use_AB = True # whether or not to use Alpha-Beta pruning
+        self.use_memo = use_memo
 
         self.explored = 0
         self.cutoffs = 0
@@ -28,7 +30,7 @@ class TTTAgent:
     def evaluate(self, state):
 
         # check the memo for this state
-        if state in self.seen_states:
+        if self.use_memo and state in self.seen_states:
             return self.seen_states[state]
 
         # otherwise calculate static evaluation heuristic
@@ -37,34 +39,22 @@ class TTTAgent:
 
         board_size = state.size
 
-        # rows
-        for r in state.board:
-            lines.append(r)
+       
 
-        # cols
-        for c in range(board_size):
-            lines.append([r[c] for r in state.board])
-
-        # diags
-        d1 = [] # forward diag
-        d2 = [] # backward diag
         for i in range(board_size):
-            for j in range(board_size):
-                if i == j:
-                    d1.append(state.board[i][j])
-                    d2.append(state.board[i][board_size-j-1])
-
-        lines.append(d1)
-        lines.append(d2)
+            lines.append(state.board[i,:]) # rows
+            lines.append(state.board[:,i]) # cols
+        lines.append(np.diag(state.board))
+        lines.append(np.diag(np.fliplr(state.board)))
 
         for line in lines:
-            X_count = line.count(X)
-            O_count = line.count(O)
+            X_count = np.count_nonzero(line == X)
+            O_count = np.count_nonzero(line == O)
 
             # X's
             if O_count == 0:
                 if X_count == board_size: # X win
-                    score += 100
+                    score += 200 * board_size
                     return score
 
                 for i in range(board_size-1, 0, -1):
@@ -75,7 +65,7 @@ class TTTAgent:
             if X_count == 0:
 
                 if O_count == board_size: # o Win
-                    score -= 100
+                    score -= 200 * board_size
                     return score
 
                 for i in range(board_size-1, 0, -1):
@@ -84,22 +74,14 @@ class TTTAgent:
 
 
         # add this state to the memo
-        self.seen_states[state] = score
+        if self.use_memo:
+            self.seen_states[state] = score
         return score
 
     # returns all potential moves for a given state
     def getMoves(self, state):
-
-        moves = []
-
-        for r in range(len(state.board)):
-            for c in range(len(state.board)):
-
-                # for each empty spot
-                if state.board[r][c] == 0:
-                    moves.append((r,c))
-
-        return moves
+        empty_spots = np.where(state.board == 0)
+        return list(zip(empty_spots[0], empty_spots[1]))
 
     # returns the succesor state reached from state by taking move
     def getState(self, state, move):
@@ -116,13 +98,12 @@ class TTTAgent:
 
     # get all neighboring states to state
     def getNeighbors(self, state):
-        moves = self.getMoves(state)
-        return [self.getState(state, m) for m in moves]
+        return [self.getState(state, m) for m in self.getMoves(state)]
 
     # picks the best move from state
     def move(self, state):
         potential_moves = self.getMoves(state)
-        potential_states = [self.getState(state, move) for move in potential_moves]
+        potential_states = self.getNeighbors(state)
 
         # if there is no time limit use maxply as limit
         if self.time_limit == 0:
@@ -155,9 +136,9 @@ class TTTAgent:
 
 
         if state.whose_turn == X:
-            return potential_moves[TTTAgent.argmax(values)]
+            return potential_moves[np.argmax(values)]
         else:
-            return potential_moves[TTTAgent.argmin(values)]
+            return potential_moves[np.argmin(values)]
 
 
     # performs a minimax search with max depth maxply
@@ -166,12 +147,13 @@ class TTTAgent:
         if plyLeft == 0 or state.win(): # terminal
             return self.evaluate(state)
 
-        # check the memo for this substate
         neighbors = self.getNeighbors(state)
-        for n in neighbors:
-            if n in self.seen_states:
-                return self.seen_states[n]
-
+       
+        # check the memo for this substate
+        if self.use_memo:
+            for n in neighbors:
+                if n in self.seen_states:
+                    return self.seen_states[n]
 
         # maximizing player
         if state.whose_turn == X:
@@ -205,17 +187,6 @@ class TTTAgent:
 
     def getBuffer(self, depth, game_size):
             return (depth)**(max(1, game_size - 9)) * DEPTH_BUFFER
-
-    # index of max element in l
-    @staticmethod
-    def argmax(l):
-        return l.index(max(l))
-
-    # index of min element in l
-    @staticmethod
-    def argmin(l):
-        return l.index(min(l))
-
 
     # returns the other players turn marker
     @staticmethod

@@ -1,5 +1,4 @@
 
-# TODO: numpy probably
 
 from TTTState import * # gamestate
 from Player import * # human player
@@ -11,14 +10,16 @@ import time
 STATS = True
 BAD_IDEA_THRESHOLD = 12
 
-player1 = TTTAgent(time_limit=3) 
-player2 = TTTAgent(time_limit=3)
+player1 = TTTAgent(time_limit=0, maxply=4, use_memo=True) 
+player2 = TTTAgent(time_limit=0, maxply=4, use_memo=True)
 
 X = 1
 O = 2
 
 # start a new game with player1 and player2
 def run(player1, player2):
+    if STATS:
+        game_start = time.time()
     print("Welcome to Tic-Tac-Toe!")
     game_size = int(input("Game size: ")) # get the game board size
     if game_size > BAD_IDEA_THRESHOLD:
@@ -69,6 +70,8 @@ def run(player1, player2):
         X_turn = not X_turn
 
 
+    if STATS: game_end = time.time()
+    print(f"Total game time: {round(game_end-game_start, 2)}")
     print(game)
     winner = game.win()
     if winner == "D":
