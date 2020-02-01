@@ -5,16 +5,19 @@ import time
 X = 1
 O = 2
 
-DEPTH_BUFFER = 0.3 # buffer in seconds to take off per depth level
+DEPTH_BUFFER = 0.1 # buffer in seconds to take off per depth level
+MIN_BUFFER_POWER = 9 # after gamesize 9 we start increasing the effetive buffer quickly
 
 
 class TTTAgent:
 
-    def __init__(self, time_limit=0):
-        self.maxply = 5 # max depth to search
+    def __init__(self, time_limit=0, maxply=4):
+        if time_limit != 0 and maxply != 4:
+            print("Warning, if time limit is not 0, maxply will be ignored")
+        self.time_limit = time_limit # time limit in seconds (0 indicates no limit)
+        self.maxply = maxply # max depth to search
         self.states_explored = 0 # number of states explored
         self.use_AB = True # whether or not to use Alpha-Beta pruning
-        self.time_limit = time_limit # time limit in seconds (0 indicates no limit)
 
         self.explored = 0
         self.cutoffs = 0
@@ -58,8 +61,6 @@ class TTTAgent:
             X_count = line.count(X)
             O_count = line.count(O)
 
-
-
             # X's
             if O_count == 0:
                 if X_count == board_size: # X win
@@ -69,11 +70,6 @@ class TTTAgent:
                 for i in range(board_size-1, 0, -1):
                     if X_count == i:
                         score += 10 * (i)
-
-                # elif X_count == board_size-1: # 2X no O
-                #     score += 10
-                # elif X_count == board_size-2:
-                #     score += 1 
 
             # O's
             if X_count == 0:
@@ -86,11 +82,6 @@ class TTTAgent:
                     if O_count == i:
                         score -= 10 * (i)
 
-
-                # elif O_count == board_size-1: # 2O no X
-                #     score -= 10
-                # elif O_count == board_size-2:
-                #     score -= 1
 
         # add this state to the memo
         self.seen_states[state] = score
@@ -147,8 +138,12 @@ class TTTAgent:
             values = [] # current iteration values
             done = False # exist early
 
-            buffer = (cur_depth-1)**2 * DEPTH_BUFFER
+            buffer = self.getBuffer(cur_depth, state.size) # time buffer scaling with depth and gamesize
+            print(f"buffer: {buffer} at depth: {cur_depth}")
             while time.time() + buffer < start_time + self.time_limit and not done:
+
+                buffer = self.getBuffer(cur_depth, state.size)
+                print(f"buffer: {buffer} at depth: {cur_depth}")
                 values = [self.minimax(s, cur_depth) for s in potential_states]
                 
                 if old_vals == values:
@@ -208,7 +203,8 @@ class TTTAgent:
 
         return value
 
-
+    def getBuffer(self, depth, game_size):
+            return (depth)**(max(1, game_size - 9)) * DEPTH_BUFFER
 
     # index of max element in l
     @staticmethod
@@ -226,4 +222,6 @@ class TTTAgent:
     def flipTurn(turn):
         if turn == X: return O
         else: return X
+
+   
 

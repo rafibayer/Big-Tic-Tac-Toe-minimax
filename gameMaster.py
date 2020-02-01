@@ -1,4 +1,6 @@
 
+# TODO: numpy probably
+
 from TTTState import * # gamestate
 from Player import * # human player
 from TTTAgent import * # AI player
@@ -7,9 +9,10 @@ import time
 
 
 STATS = True
+BAD_IDEA_THRESHOLD = 12
 
-player1 = TTTAgent(time_limit = 3) 
-player2 = TTTAgent(time_limit = 3)
+player1 = TTTAgent(time_limit=3) 
+player2 = TTTAgent(time_limit=3)
 
 X = 1
 O = 2
@@ -18,6 +21,12 @@ O = 2
 def run(player1, player2):
     print("Welcome to Tic-Tac-Toe!")
     game_size = int(input("Game size: ")) # get the game board size
+    if game_size > BAD_IDEA_THRESHOLD:
+        ans = input("Uhhh Are you sure that's a good idea? (y/n): ")
+        if ans != "y":
+            exit("Good call")
+        else:
+            print("God bless your CPU, try using a low maxply because time limits can't save you here")
     print(f"Creating a {game_size}x{game_size} board...")
 
     game = TTTState(None, game_size) # make new game-state of size 
