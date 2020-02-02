@@ -12,16 +12,17 @@ MIN_BUFFER_POWER = 25 # after gamesize 9 we start increasing the effetive buffer
 
 class TTTAgent:
 
-    def __init__(self, time_limit=0, maxply=4, use_memo=False):
+    def __init__(self, time_limit=0, maxply=3, use_memo=True):
         if time_limit != 0 and maxply != 4:
             print("Warning, if time limit is not 0, maxply will be ignored")
         self.time_limit = time_limit # time limit in seconds (0 indicates no limit)
         self.maxply = maxply # max depth to search
         self.states_explored = 0 # number of states explored
         self.use_AB = True # whether or not to use Alpha-Beta pruning
-        self.use_memo = use_memo
+        self.use_memo = use_memo # whether to use memozation to prevent evaluating the same states twice
 
-        self.explored = 0
+        # Agent stats
+        self.explored = 0 
         self.cutoffs = 0
 
         self.seen_states = dict() # memo of states already evaluated
@@ -35,47 +36,22 @@ class TTTAgent:
 
         # otherwise calculate static evaluation heuristic
         score = 0
-        lines = []
+        lines = state.extract_lines()
+        for l in lines:
+            player_counts = {X: np.count_nonzero(l == X), O: np.count_nonzero(l == O)}
+            if player_counts[X] == state.win_score:
+                score += 100**state.size
+                return score
+            elif player_counts[O] == state.win_score:
+                score -= 100**state.size
+                return score
 
-        board_size = state.size
+            for i in range(state.win_score-1, 0, -1):
+                if player_counts[X] == i and player_counts[O] == 0:
+                    score += (20 **i) * (1/i)
+                if player_counts[O] == i and player_counts[X] == 0:
+                    score -= (20 **i) * (1/i)
 
-       
-
-        for i in range(board_size):
-            lines.append(state.board[i,:]) # rows
-            lines.append(state.board[:,i]) # cols
-        lines.append(np.diag(state.board))
-        lines.append(np.diag(np.fliplr(state.board)))
-
-        for line in lines:
-            X_count = np.count_nonzero(line == X)
-            O_count = np.count_nonzero(line == O)
-
-            # X's
-            if O_count == 0:
-                if X_count == board_size: # X win
-                    score += 200 * board_size
-                    return score
-
-                for i in range(board_size-1, 0, -1):
-                    if X_count == i:
-                        score += 10 * (i)
-
-            # O's
-            if X_count == 0:
-
-                if O_count == board_size: # o Win
-                    score -= 200 * board_size
-                    return score
-
-                for i in range(board_size-1, 0, -1):
-                    if O_count == i:
-                        score -= 10 * (i)
-
-
-        # add this state to the memo
-        if self.use_memo:
-            self.seen_states[state] = score
         return score
 
     # returns all potential moves for a given state
@@ -109,29 +85,28 @@ class TTTAgent:
         if self.time_limit == 0:
             values = [self.minimax(s, self.maxply) for s in potential_states]
 
+
         # perform iterative deepening until time expires
         # (Note, can go over time but branching factor decreases rapidly in later game states)
         else:
 
+            hard_depth_limit = state.size**2 # shouldn't search more than the whole board
             cur_depth = 1
             start_time = time.time()
-            old_vals = [] # last iteration values
             values = [] # current iteration values
-            done = False # exist early
 
             buffer = self.getBuffer(cur_depth, state.size) # time buffer scaling with depth and gamesize
-            print(f"buffer: {buffer} at depth: {cur_depth}")
-            while time.time() + buffer < start_time + self.time_limit and not done:
+
+            while time.time() < (start_time + self.time_limit) - buffer:
+                if cur_depth > hard_depth_limit:
+                    break
 
                 buffer = self.getBuffer(cur_depth, state.size)
-                print(f"buffer: {buffer} at depth: {cur_depth}")
                 values = [self.minimax(s, cur_depth) for s in potential_states]
                 
-                if old_vals == values:
-                    done = True
-                old_vals = values
-
                 cur_depth += 1
+                
+            print(f"Max depth: {cur_depth}")
 
 
 
@@ -147,18 +122,16 @@ class TTTAgent:
         if plyLeft == 0 or state.win(): # terminal
             return self.evaluate(state)
 
+        if self.use_memo and state in self.seen_states:
+            return self.seen_states[state]
+
         neighbors = self.getNeighbors(state)
-       
-        # check the memo for this substate
-        if self.use_memo:
-            for n in neighbors:
-                if n in self.seen_states:
-                    return self.seen_states[n]
 
         # maximizing player
         if state.whose_turn == X:
             value = -10e10
             for n in neighbors:
+                
                 value = max(value, self.minimax(n, plyLeft-1, alpha, beta))
 
                 # A-B
@@ -174,6 +147,7 @@ class TTTAgent:
         else:
             value = 10e10
             for n in neighbors:
+            
                 value = min(value, self.minimax(n, plyLeft-1, alpha, beta))
 
                 # A-B

@@ -8,37 +8,48 @@ import time
 
 
 STATS = True
-BAD_IDEA_THRESHOLD = 12
 
-player1 = TTTAgent(time_limit=0, maxply=4, use_memo=True) 
-player2 = TTTAgent(time_limit=0, maxply=4, use_memo=True)
+player1 = TTTAgent(time_limit=1, maxply=4, use_memo=True) 
+player2 = TTTAgent(time_limit=1, maxply=4, use_memo=True)
+# player2 = Player()
 
 X = 1
 O = 2
 
 # start a new game with player1 and player2
-def run(player1, player2):
+def run(player1, player2, start_state=None):
     if STATS:
         game_start = time.time()
     print("Welcome to Tic-Tac-Toe!")
-    game_size = int(input("Game size: ")) # get the game board size
-    if game_size > BAD_IDEA_THRESHOLD:
-        ans = input("Uhhh Are you sure that's a good idea? (y/n): ")
-        if ans != "y":
-            exit("Good call")
+    if start_state:
+        game = start_state
+    else:
+        game_size = int(input("Game size: ")) # get the game board size
+        
+        if game_size == 3:
+            win_score = 3
+        elif game_size == 4:
+            win_score = 4
         else:
-            print("God bless your CPU, try using a low maxply because time limits can't save you here")
-    print(f"Creating a {game_size}x{game_size} board...")
+            win_score = int(input(f"How many in a row to win? ({game_size-1},{game_size}): "))
+            if win_score < game_size-1 or win_score > game_size:
+                raise ValueError("Win score out of range, would result in unfair game")
 
-    game = TTTState(None, game_size) # make new game-state of size 
+
+        print(f"Creating a {game_size}x{game_size} board, {win_score} in a row to win...")
+
+        game = TTTState(None, game_size, win_score) # make new game-state of size 
 
     X_turn = True # X's go first
 
     while not game.win(): 
         print(game)
 
+
         mover = player1 if X_turn else player2 # pick the moving agent
         mover_token = X if X_turn else O # pick the movers token number
+        if isinstance(mover, TTTAgent):
+                print(f"\t Agent eval: {mover.evaluate(game)}")
 
 
         if mover == player1:
@@ -60,6 +71,7 @@ def run(player1, player2):
                 end_time = time.time()
 
                 print(f"Elapsed time: {round(end_time-start_time, 2)}s")
+                print(f"Eval: {player1.evaluate(game)}")
 
 
         if not validMove(move, game):
@@ -70,8 +82,11 @@ def run(player1, player2):
         X_turn = not X_turn
 
 
-    if STATS: game_end = time.time()
-    print(f"Total game time: {round(game_end-game_start, 2)}")
+
+    if STATS: 
+        game_end = time.time()
+        print(f"Total game time: {round(game_end-game_start, 2)}")
+
     print(game)
     winner = game.win()
     if winner == "D":
@@ -79,7 +94,7 @@ def run(player1, player2):
     else:
         print(f"{winner} has won the game!")
 
-    again = input("Player again? (y/n): ")
+    again = input("Play again? (y/n): ")
     if again == "y":
         run(player1, player2) 
 
@@ -105,9 +120,22 @@ def validMove(move, game):
     return True
 
 
+X_to_win = TTTState(None, 5, 4)
+X_to_win.board = np.array([
+    [0, O, X, O, 0],
+    [0, X, 0, O, X],
+    [0, O, X, X, O],
+    [X, 0, 0, O, X],
+    [O, 0, 0, 0, 0]
+])
+X_to_win.whose_turn = X
+
+
 if __name__ == "__main__":
     print("running")
-    run(player1, player2)
+    run(player1, player2, None)
+
+
 
         
 
