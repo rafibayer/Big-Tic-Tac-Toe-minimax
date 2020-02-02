@@ -12,8 +12,8 @@ MIN_BUFFER_POWER = 25 # after gamesize 9 we start increasing the effetive buffer
 
 class TTTAgent:
 
-    def __init__(self, time_limit=0, maxply=3, use_memo=True):
-        if time_limit != 0 and maxply != 4:
+    def __init__(self, time_limit=0, maxply=-1, use_memo=True):
+        if time_limit != 0 and maxply != -1:
             print("Warning, if time limit is not 0, maxply will be ignored")
         self.time_limit = time_limit # time limit in seconds (0 indicates no limit)
         self.maxply = maxply # max depth to search

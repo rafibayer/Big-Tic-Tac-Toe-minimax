@@ -9,8 +9,8 @@ import time
 
 STATS = True
 
-player1 = TTTAgent(time_limit=1, maxply=4, use_memo=True) 
-player2 = TTTAgent(time_limit=1, maxply=4, use_memo=True)
+player1 = TTTAgent(time_limit=1, maxply=-1, use_memo=True) 
+player2 = TTTAgent(time_limit=1, maxply=-1, use_memo=True)
 # player2 = Player()
 
 X = 1
